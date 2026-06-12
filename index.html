@@ -1,0 +1,1045 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#166534">
+  <title>전자 입고확인서 MVP</title>
+  <style>
+    :root {
+      --bg: #f5f7f1;
+      --surface: #ffffff;
+      --ink: #17202a;
+      --muted: #637381;
+      --line: #d7ded2;
+      --primary: #166534;
+      --primary-dark: #14532d;
+      --accent: #b45309;
+      --danger: #b91c1c;
+      --blue: #1d4ed8;
+      --shadow: 0 12px 28px rgba(22, 32, 42, 0.10);
+      --radius: 8px;
+      font-family: "Segoe UI", "Malgun Gothic", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-size: 18px;
+      line-height: 1.45;
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      box-shadow: 0 2px 14px rgba(18, 32, 43, 0.07);
+    }
+
+    .topbar-inner {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 14px 16px 10px;
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .brand strong { display: block; font-size: 22px; }
+    .brand span { color: var(--muted); font-size: 14px; }
+
+    .nav {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .nav button, .quick-button, .primary-button, .secondary-button, .ghost-button, .danger-button, .option-card, .qty-button {
+      border-radius: var(--radius);
+      min-height: 50px;
+      border: 0;
+      font-weight: 800;
+    }
+
+    .nav button {
+      background: #edf1ed;
+      color: #263238;
+      padding: 12px 8px;
+    }
+
+    .nav button.active {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 7px 18px rgba(22, 101, 52, 0.22);
+    }
+
+    main {
+      flex: 1;
+      width: 100%;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 18px 16px 36px;
+    }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    .section-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 8px 0 16px;
+    }
+
+    h1, h2, h3 { margin: 0; line-height: 1.2; letter-spacing: 0; }
+    h1 { font-size: 28px; }
+    h2 { font-size: 24px; }
+    h3 { font-size: 20px; }
+
+    .muted { color: var(--muted); font-size: 15px; }
+
+    .home-actions, .stats-grid, .line-list { display: grid; gap: 12px; }
+
+    .quick-button {
+      width: 100%;
+      min-height: 86px;
+      padding: 16px;
+      background: var(--surface);
+      color: var(--ink);
+      border: 2px solid var(--line);
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      text-align: left;
+    }
+
+    .quick-button strong { display: block; font-size: 22px; margin-bottom: 4px; }
+    .quick-button .count {
+      min-width: 52px;
+      min-height: 52px;
+      border-radius: 50%;
+      background: #fff7ed;
+      color: var(--accent);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 900;
+    }
+
+    .panel, .confirm-card, .line-item {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: 0 8px 22px rgba(18, 32, 43, 0.07);
+      margin-bottom: 14px;
+    }
+
+    .field { display: grid; gap: 8px; margin-bottom: 14px; }
+    label { font-weight: 800; }
+
+    input, select, textarea {
+      width: 100%;
+      min-height: 54px;
+      border-radius: var(--radius);
+      border: 2px solid var(--line);
+      padding: 12px 14px;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    textarea { min-height: 180px; resize: vertical; }
+
+    input:focus, select:focus, textarea:focus {
+      outline: 3px solid rgba(22, 101, 52, 0.18);
+      border-color: var(--primary);
+    }
+
+    .option-grid, .qty-control {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .option-card {
+      width: 100%;
+      min-height: 78px;
+      padding: 12px;
+      background: #fff;
+      border: 2px solid var(--line);
+      text-align: left;
+      color: var(--ink);
+    }
+
+    .option-card strong { display: block; font-size: 20px; margin-bottom: 4px; }
+    .option-card.selected {
+      border-color: var(--primary);
+      background: #ecfdf3;
+      box-shadow: 0 8px 18px rgba(22, 101, 52, 0.16);
+    }
+
+    .qty-control { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .qty-button {
+      min-height: 58px;
+      background: #fff7ed;
+      color: #7c2d12;
+      border: 2px solid #fed7aa;
+      font-weight: 900;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .primary-button, .secondary-button, .ghost-button, .danger-button {
+      min-height: 54px;
+      padding: 12px 16px;
+      font-weight: 900;
+    }
+
+    .primary-button { background: var(--primary); color: #fff; }
+    .secondary-button { background: #25323a; color: #fff; }
+    .ghost-button { background: #edf1ed; color: #263238; border: 1px solid var(--line); }
+    .danger-button { background: #fee2e2; color: var(--danger); border: 1px solid #fecaca; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .money-box {
+      display: grid;
+      gap: 8px;
+      background: #f7fbf8;
+      border: 1px solid #cfe3d8;
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-top: 12px;
+    }
+
+    .money-box b { font-size: 28px; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: #e7eef8;
+      color: #1e3a8a;
+      font-size: 14px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .badge.waiting { background: #fff7ed; color: #9a3412; }
+    .badge.done { background: #eaf7ed; color: var(--primary); }
+    .badge.pending-price { background: #fee2e2; color: var(--danger); }
+
+    .summary-list {
+      display: grid;
+      gap: 8px;
+      padding: 0;
+      margin: 12px 0 0;
+      list-style: none;
+    }
+
+    .summary-list li {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid #edf1ed;
+      padding: 8px 0;
+    }
+
+    .confirm-preview {
+      border: 3px solid var(--primary);
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .preview-no { font-size: 16px; color: var(--muted); font-weight: 800; }
+    .preview-title { font-size: 30px; font-weight: 900; margin: 8px 0 14px; }
+
+    .table-wrap {
+      overflow-x: auto;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      margin-top: 12px;
+    }
+
+    table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 16px; }
+    th, td { border-bottom: 1px solid var(--line); padding: 10px; text-align: left; vertical-align: top; }
+    th { background: #edf1ed; font-size: 14px; color: #34444d; }
+
+    .empty {
+      padding: 20px;
+      border: 1px dashed #b9c4bd;
+      border-radius: var(--radius);
+      background: #fff;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .toast {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      z-index: 20;
+      background: #17202a;
+      color: #fff;
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: none;
+      font-weight: 800;
+    }
+
+    .toast.show { display: block; }
+
+    @media (min-width: 760px) {
+      .home-actions, .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .option-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
+    @media (min-width: 1020px) {
+      .home-actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .quick-button { min-height: 132px; align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand-row">
+          <div class="brand">
+            <strong>전자 입고확인서</strong>
+            <span id="todayLabel">문자 확인 · 밤 정산 프로토타입</span>
+          </div>
+          <button class="ghost-button" type="button" onclick="resetSample()">샘플 초기화</button>
+        </div>
+        <nav class="nav" aria-label="주요 화면">
+          <button type="button" data-nav="home" class="active" onclick="showScreen('home')">홈</button>
+          <button type="button" data-nav="today" onclick="showScreen('today')">오늘</button>
+          <button type="button" data-nav="send" onclick="showScreen('send')">문자</button>
+          <button type="button" data-nav="settlement" onclick="showScreen('settlement')">정산</button>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section id="screen-home" class="screen active"></section>
+      <section id="screen-form" class="screen"></section>
+      <section id="screen-preview" class="screen"></section>
+      <section id="screen-today" class="screen"></section>
+      <section id="screen-send" class="screen"></section>
+      <section id="screen-settlement" class="screen"></section>
+    </main>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const STORAGE_KEY = "haebaramConfirmAppV1";
+    const STATUS = ["문자대기", "문자앱열림", "전송완료표시", "정산대기", "정산확정", "입금완료"];
+    const ITEMS = ["사과", "배", "복숭아", "포도", "감귤"];
+    const GRADES = ["특", "상", "보통", "가공"];
+    const CONTAINERS = [
+      { type: "박스", size: "5kg" },
+      { type: "박스", size: "10kg" },
+      { type: "박스", size: "15kg" },
+      { type: "통", size: "12입" },
+      { type: "망", size: "20kg" }
+    ];
+    const PRICE_RULES = [
+      ["사과", "특", "5kg", 36000], ["사과", "상", "5kg", 30000], ["사과", "보통", "5kg", 22000],
+      ["사과", "특", "10kg", 68000], ["사과", "상", "10kg", 56000], ["사과", "보통", "10kg", 41000],
+      ["배", "특", "15kg", 72000], ["배", "상", "15kg", 62000], ["배", "보통", "15kg", 48000],
+      ["복숭아", "특", "5kg", 42000], ["복숭아", "상", "5kg", 35000], ["복숭아", "보통", "5kg", 26000],
+      ["포도", "특", "5kg", 52000], ["포도", "상", "5kg", 43000], ["포도", "보통", "5kg", 32000],
+      ["감귤", "특", "10kg", 34000], ["감귤", "상", "10kg", 28000], ["감귤", "보통", "10kg", 21000],
+      ["감귤", "상", "20kg", 52000]
+    ].map(([item, grade, containerSize, unitPrice]) => ({ item, grade, containerSize, unitPrice }));
+
+    let db = loadDb();
+    let currentScreen = "home";
+    let draft = freshDraft();
+    let selectedConfirmationId = "";
+
+    function localDateISO(date = new Date()) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function nowLocal() {
+      const date = new Date();
+      const hour = String(date.getHours()).padStart(2, "0");
+      const minute = String(date.getMinutes()).padStart(2, "0");
+      return `${localDateISO(date)}T${hour}:${minute}`;
+    }
+
+    function makeId(prefix) {
+      return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+    }
+
+    function money(value) {
+      return Number(value || 0).toLocaleString("ko-KR") + "원";
+    }
+
+    function number(value) {
+      return Number(value || 0).toLocaleString("ko-KR");
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+      }[char]));
+    }
+
+    function digitsOnly(value) {
+      return String(value || "").replace(/\D/g, "");
+    }
+
+    function last4(value) {
+      const digits = digitsOnly(value);
+      return digits.slice(-4);
+    }
+
+    function loadDb() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return createSeedDb();
+      try {
+        const parsed = JSON.parse(raw);
+        return { confirmations: parsed.confirmations || [] };
+      } catch (error) {
+        console.warn("confirm app storage parse failed", error);
+        return createSeedDb();
+      }
+    }
+
+    function createSeedDb() {
+      return {
+        confirmations: [
+          {
+            id: "C001",
+            no: `EC-${localDateISO().replaceAll("-", "")}-001`,
+            farmerName: "김해숙 농가",
+            phoneLast4: "7788",
+            receivedAt: `${localDateISO()}T08:30`,
+            status: "전송완료표시",
+            lines: [
+              makeLine("사과", "상", "박스", "10kg", 5),
+              makeLine("사과", "특", "박스", "15kg", 2)
+            ],
+            createdAt: `${localDateISO()}T08:30`,
+            updatedAt: `${localDateISO()}T08:40`
+          }
+        ]
+      };
+    }
+
+    function saveDb() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+    }
+
+    function freshDraft() {
+      const seq = String((db?.confirmations?.length || 0) + 1).padStart(3, "0");
+      return {
+        id: "",
+        no: `EC-${localDateISO().replaceAll("-", "")}-${seq}`,
+        farmerName: "",
+        phone: "",
+        receivedAt: nowLocal(),
+        status: "문자대기",
+        line: { item: "", grade: "", containerType: "", containerSize: "", count: 1 },
+        lines: []
+      };
+    }
+
+    function resetSample() {
+      if (!confirm("샘플 데이터를 초기화할까요? 현재 브라우저 저장 데이터가 바뀝니다.")) return;
+      db = createSeedDb();
+      saveDb();
+      draft = freshDraft();
+      selectedConfirmationId = "";
+      renderAll();
+      toast("샘플 데이터가 초기화되었습니다.");
+    }
+
+    function findPrice(item, grade, containerSize) {
+      const rule = PRICE_RULES.find((row) => row.item === item && row.grade === grade && row.containerSize === containerSize);
+      return rule ? Number(rule.unitPrice) : null;
+    }
+
+    function makeLine(item, grade, containerType, containerSize, count) {
+      const unitPrice = findPrice(item, grade, containerSize);
+      return {
+        id: makeId("line"),
+        item,
+        grade,
+        containerType,
+        containerSize,
+        count: Number(count || 0),
+        unitPrice,
+        amount: unitPrice === null ? null : Number(count || 0) * unitPrice,
+        pricePending: unitPrice === null
+      };
+    }
+
+    function isPricePending(line) {
+      return line.pricePending || line.unitPrice === null || line.amount === null;
+    }
+
+    function payableAmount(line) {
+      return isPricePending(line) ? 0 : Number(line.amount || 0);
+    }
+
+    function totalAmount(lines) {
+      return lines.reduce((sum, line) => sum + payableAmount(line), 0);
+    }
+
+    function pendingCount(lines) {
+      return lines.filter(isPricePending).length;
+    }
+
+    function amountLabel(line) {
+      return isPricePending(line) ? "단가 미정 / 정산 확인 필요" : money(line.amount);
+    }
+
+    function priceLabel(line) {
+      return isPricePending(line) ? "단가 미정" : money(line.unitPrice);
+    }
+
+    function todayConfirmations() {
+      const today = localDateISO();
+      return db.confirmations.filter((confirmation) => confirmation.receivedAt.slice(0, 10) === today);
+    }
+
+    function settlementTargets() {
+      return db.confirmations.filter((confirmation) => ["전송완료표시", "정산대기"].includes(confirmation.status));
+    }
+
+    function renderAll() {
+      document.getElementById("todayLabel").textContent = `${localDateISO()} · 전화번호 전체 미저장`;
+      renderHome();
+      renderForm();
+      renderPreview();
+      renderToday();
+      renderSend();
+      renderSettlement();
+      setActiveNav();
+    }
+
+    function showScreen(name) {
+      currentScreen = name;
+      document.querySelectorAll(".screen").forEach((node) => node.classList.remove("active"));
+      document.getElementById(`screen-${name}`).classList.add("active");
+      if (name === "form") renderForm();
+      if (name === "preview") renderPreview();
+      setActiveNav();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function setActiveNav() {
+      document.querySelectorAll("[data-nav]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.nav === currentScreen);
+      });
+    }
+
+    function startNew() {
+      draft = freshDraft();
+      showScreen("form");
+    }
+
+    function renderHome() {
+      const today = todayConfirmations();
+      const sendWaiting = db.confirmations.filter((row) => ["문자대기", "문자앱열림"].includes(row.status));
+      const settlement = settlementTargets();
+      document.getElementById("screen-home").innerHTML = `
+        <div class="section-head">
+          <div>
+            <h1>현장 홈</h1>
+            <p class="muted">종이 영수증 없이 확인서 작성 후 문자앱을 여는 흐름입니다.</p>
+          </div>
+        </div>
+        <div class="home-actions">
+          <button class="quick-button" type="button" onclick="startNew()">
+            <span><strong>새 입고확인서 작성</strong><span class="muted">농가, 품목, 수량 입력</span></span>
+            <span class="count">+</span>
+          </button>
+          <button class="quick-button" type="button" onclick="showScreen('today')">
+            <span><strong>오늘 확인서</strong><span class="muted">작성된 확인서 목록</span></span>
+            <span class="count">${today.length}</span>
+          </button>
+          <button class="quick-button" type="button" onclick="showScreen('send')">
+            <span><strong>문자 전송 대기</strong><span class="muted">문자대기/문자앱열림</span></span>
+            <span class="count">${sendWaiting.length}</span>
+          </button>
+          <button class="quick-button" type="button" onclick="showScreen('settlement')">
+            <span><strong>밤 정산 대상</strong><span class="muted">전송완료/정산대기</span></span>
+            <span class="count">${settlement.length}</span>
+          </button>
+        </div>
+      `;
+    }
+
+    function renderForm() {
+      const line = draft.line;
+      const selectedContainer = line.containerType && line.containerSize ? `${line.containerType} ${line.containerSize}` : "미선택";
+      document.getElementById("screen-form").innerHTML = `
+        <div class="section-head">
+          <div>
+            <h1>입고확인서 작성</h1>
+            <p class="muted">전화번호 전체는 저장하지 않고 문자앱 열기에만 사용합니다.</p>
+          </div>
+          <button class="ghost-button" type="button" onclick="showScreen('home')">홈으로</button>
+        </div>
+        <div class="panel">
+          <div class="field">
+            <label for="farmerName">농가명</label>
+            <input id="farmerName" value="${escapeHtml(draft.farmerName)}" oninput="draft.farmerName = this.value" placeholder="예: 김해숙 농가">
+          </div>
+          <div class="field">
+            <label for="farmerPhone">전화번호</label>
+            <input id="farmerPhone" inputmode="tel" value="${escapeHtml(draft.phone)}" oninput="draft.phone = this.value" placeholder="문자앱 열기에만 사용">
+            <span class="muted">저장 시 전화번호 뒤 4자리만 남깁니다.</span>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>상세 줄 추가</h2>
+          <h3>품목</h3>
+          <div class="option-grid">${ITEMS.map((item) => optionButton("item", item, line.item === item)).join("")}</div>
+          <h3>등급</h3>
+          <div class="option-grid">${GRADES.map((grade) => optionButton("grade", grade, line.grade === grade)).join("")}</div>
+          <h3>용기/사이즈</h3>
+          <div class="option-grid">${CONTAINERS.map((container) => {
+            const selected = line.containerType === container.type && line.containerSize === container.size;
+            return `<button class="option-card ${selected ? "selected" : ""}" type="button" onclick="selectContainer('${container.type}', '${container.size}')"><strong>${container.type} ${container.size}</strong><span>Mock 단가표 기준</span></button>`;
+          }).join("")}</div>
+          <div class="money-box">
+            <span class="muted">선택</span>
+            <b>${escapeHtml(line.item || "품목")} · ${escapeHtml(line.grade || "등급")} · ${escapeHtml(selectedContainer)}</b>
+          </div>
+          ${renderQtyControls()}
+          <div class="button-row">
+            <button class="primary-button" type="button" onclick="addLine()" ${canAddLine() ? "" : "disabled"}>상세 줄 추가</button>
+            <button class="ghost-button" type="button" onclick="clearLine()">현재 줄 초기화</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>추가된 상세 줄</h2>
+          ${renderLineList(draft.lines, true)}
+          <div class="money-box">
+            <span>정산 반영 합계</span>
+            <b>${money(totalAmount(draft.lines))}</b>
+            <span class="muted">단가 미정 ${pendingCount(draft.lines)}건 제외</span>
+          </div>
+          <div class="button-row">
+            <button class="primary-button" type="button" onclick="goPreview()" ${canPreview() ? "" : "disabled"}>확인서 미리보기</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function optionButton(key, value, selected) {
+      return `<button class="option-card ${selected ? "selected" : ""}" type="button" onclick="selectLineValue('${key}', '${value}')"><strong>${escapeHtml(value)}</strong><span>선택</span></button>`;
+    }
+
+    function selectLineValue(key, value) {
+      draft.line[key] = value;
+      renderForm();
+    }
+
+    function selectContainer(type, size) {
+      draft.line.containerType = type;
+      draft.line.containerSize = size;
+      renderForm();
+    }
+
+    function renderQtyControls() {
+      const count = Number(draft.line.count || 0);
+      return `
+        <h3>수량</h3>
+        <div class="qty-control">
+          ${[-50, -10, -5, -1, 1, 5, 10, 50].map((delta) => `<button class="qty-button" type="button" onclick="changeCount(${delta})">${delta > 0 ? "+" : ""}${delta}</button>`).join("")}
+        </div>
+        <h3>빠른 수량</h3>
+        <div class="qty-control">
+          ${[1, 5, 10, 20, 30, 50].map((value) => `<button class="qty-button" type="button" onclick="setCount(${value})">${value}</button>`).join("")}
+        </div>
+        <div class="field">
+          <label for="lineCount">개수 직접 입력</label>
+          <input id="lineCount" type="number" min="0" value="${count}" oninput="draft.line.count = Math.max(0, Number(this.value || 0)); renderForm();">
+        </div>
+      `;
+    }
+
+    function changeCount(delta) {
+      draft.line.count = Math.max(0, Number(draft.line.count || 0) + delta);
+      renderForm();
+    }
+
+    function setCount(value) {
+      draft.line.count = Math.max(0, Number(value || 0));
+      renderForm();
+    }
+
+    function canAddLine() {
+      const line = draft.line;
+      return Boolean(line.item && line.grade && line.containerType && line.containerSize && Number(line.count) > 0);
+    }
+
+    function addLine() {
+      if (!canAddLine()) {
+        toast("품목, 등급, 용기/사이즈, 1개 이상 수량을 확인하세요.");
+        return;
+      }
+      draft.lines.push(makeLine(draft.line.item, draft.line.grade, draft.line.containerType, draft.line.containerSize, draft.line.count));
+      clearLine(false);
+      renderForm();
+      toast("상세 줄을 추가했습니다.");
+    }
+
+    function clearLine(render = true) {
+      draft.line = { item: "", grade: "", containerType: "", containerSize: "", count: 1 };
+      if (render) renderForm();
+    }
+
+    function removeDraftLine(lineId) {
+      draft.lines = draft.lines.filter((line) => line.id !== lineId);
+      renderForm();
+    }
+
+    function canPreview() {
+      return draft.farmerName.trim() && digitsOnly(draft.phone).length >= 8 && draft.lines.length && draft.lines.every((line) => Number(line.count) > 0);
+    }
+
+    function goPreview() {
+      if (!canPreview()) {
+        toast("농가명, 전화번호, 상세 줄을 확인하세요.");
+        return;
+      }
+      draft.receivedAt = nowLocal();
+      showScreen("preview");
+    }
+
+    function renderLineList(lines, removable = false) {
+      if (!lines.length) return "<div class='empty'>상세 줄이 없습니다.</div>";
+      return `<div class="line-list">${lines.map((line, index) => `
+        <div class="line-item">
+          <div class="section-head" style="margin:0;">
+            <h3>${index + 1}. ${escapeHtml(line.item)} ${escapeHtml(line.grade)}</h3>
+            <span class="badge ${isPricePending(line) ? "pending-price" : "done"}">${amountLabel(line)}</span>
+          </div>
+          <div class="muted">${escapeHtml(line.containerType)} ${escapeHtml(line.containerSize)} · ${number(line.count)}개 · 단가 ${priceLabel(line)}</div>
+          ${removable ? `<button class="danger-button" type="button" onclick="removeDraftLine('${line.id}')">이 줄 삭제</button>` : ""}
+        </div>
+      `).join("")}</div>`;
+    }
+
+    function buildConfirmationFromDraft() {
+      const now = nowLocal();
+      return {
+        id: draft.id || makeId("confirm"),
+        no: draft.no,
+        farmerName: draft.farmerName.trim(),
+        phoneLast4: last4(draft.phone),
+        receivedAt: draft.receivedAt || now,
+        status: draft.status || "문자대기",
+        lines: draft.lines.map((line) => ({ ...line })),
+        createdAt: now,
+        updatedAt: now
+      };
+    }
+
+    function saveDraft(status = "문자대기") {
+      const confirmation = buildConfirmationFromDraft();
+      confirmation.status = status;
+      const existing = db.confirmations.findIndex((row) => row.id === confirmation.id);
+      if (existing >= 0) db.confirmations[existing] = confirmation;
+      else db.confirmations.push(confirmation);
+      saveDb();
+      selectedConfirmationId = confirmation.id;
+      draft.id = confirmation.id;
+      draft.status = confirmation.status;
+      renderAll();
+      return confirmation;
+    }
+
+    function renderPreview() {
+      document.getElementById("screen-preview").innerHTML = `
+        <div class="section-head">
+          <div>
+            <h1>전자 입고확인서 미리보기</h1>
+            <p class="muted">문자 발송 전 최종 확인 화면입니다.</p>
+          </div>
+          <button class="ghost-button" type="button" onclick="showScreen('form')">수정</button>
+        </div>
+        ${renderPreviewCard(draft, true)}
+        <div class="panel">
+          <h2>문자 보내기</h2>
+          <p class="muted">웹앱은 실제 전송 성공 여부를 알 수 없습니다. 문자앱에서 보낸 뒤 직접 전송 완료로 표시하세요.</p>
+          <textarea id="messagePreview" readonly>${escapeHtml(buildMessage(draft))}</textarea>
+          <div class="button-row">
+            <a id="smsLink" class="primary-button" href="${smsHref(draft.phone, buildMessage(draft))}" onclick="markSmsOpened()">문자앱 열기</a>
+            <button class="secondary-button" type="button" onclick="copyMessage()">문구 복사</button>
+            <button class="ghost-button" type="button" onclick="markSentDone()">전송 완료로 표시</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderPreviewCard(source, isDraft = false) {
+      const lines = source.lines || [];
+      return `
+        <div class="confirm-preview">
+          <div class="preview-no">NO ${escapeHtml(source.no)}</div>
+          <div class="preview-title">${escapeHtml(source.farmerName || "농가명 미입력")} 입고확인서</div>
+          <ul class="summary-list">
+            <li><span>입고일시</span><b>${escapeHtml((source.receivedAt || "").replace("T", " "))}</b></li>
+            <li><span>상태</span><b>${escapeHtml(source.status || "문자대기")}</b></li>
+            <li><span>전화번호 저장</span><b>${isDraft ? "저장 안 함" : "뒤 4자리 " + escapeHtml(source.phoneLast4 || "-")}</b></li>
+            <li><span>정산 반영 합계</span><b>${money(totalAmount(lines))}</b></li>
+            <li><span>단가 미정 건수</span><b>${pendingCount(lines)}건</b></li>
+          </ul>
+          ${renderLineList(lines, false)}
+        </div>
+      `;
+    }
+
+    function buildMessage(source) {
+      const lines = source.lines || [];
+      const lineText = lines.map((line, index) => {
+        return `${index + 1}. ${line.item} ${line.grade} ${line.containerType} ${line.containerSize} ${line.count}개 / ${amountLabel(line)}`;
+      }).join("\n");
+      return `[해바람 전자 입고확인서]\nNO: ${source.no}\n농가명: ${source.farmerName}\n입고일시: ${(source.receivedAt || "").replace("T", " ")}\n${lineText}\n정산 반영 합계: ${money(totalAmount(lines))}\n단가 미정: ${pendingCount(lines)}건\n확인 부탁드립니다.`;
+    }
+
+    function smsHref(phone, message) {
+      const digits = digitsOnly(phone);
+      return `sms:${digits}?body=${encodeURIComponent(message)}`;
+    }
+
+    function markSmsOpened() {
+      const confirmation = saveDraft("문자앱열림");
+      toast(`${confirmation.no} 문자앱열림 상태로 저장했습니다.`);
+    }
+
+    async function copyMessage() {
+      const text = document.getElementById("messagePreview")?.value || buildMessage(draft);
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (error) {
+        const helper = document.createElement("textarea");
+        helper.value = text;
+        document.body.appendChild(helper);
+        helper.select();
+        document.execCommand("copy");
+        helper.remove();
+      }
+      toast("확인서 문구를 복사했습니다.");
+    }
+
+    function markSentDone() {
+      const confirmation = saveDraft("전송완료표시");
+      toast(`${confirmation.no} 전송완료표시 상태로 저장했습니다.`);
+      showScreen("settlement");
+    }
+
+    function renderToday() {
+      const rows = todayConfirmations().sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
+      document.getElementById("screen-today").innerHTML = `
+        <div class="section-head">
+          <div>
+            <h1>오늘 확인서</h1>
+            <p class="muted">저장된 확인서에는 전화번호 뒤 4자리만 남습니다.</p>
+          </div>
+          <button class="primary-button" type="button" onclick="startNew()">새 확인서</button>
+        </div>
+        ${rows.length ? `<div class="line-list">${rows.map(renderConfirmationCard).join("")}</div>` : "<div class='empty'>오늘 확인서가 없습니다.</div>"}
+      `;
+    }
+
+    function renderConfirmationCard(confirmation) {
+      return `
+        <div class="confirm-card">
+          <div class="section-head" style="margin:0;">
+            <div>
+              <h3>${escapeHtml(confirmation.no)}</h3>
+              <div class="muted">${escapeHtml(confirmation.farmerName)} · 전화 뒤 4자리 ${escapeHtml(confirmation.phoneLast4 || "-")}</div>
+            </div>
+            <span class="badge ${confirmation.status === "전송완료표시" ? "done" : "waiting"}">${escapeHtml(confirmation.status)}</span>
+          </div>
+          <ul class="summary-list">
+            <li><span>정산 반영 합계</span><b>${money(totalAmount(confirmation.lines))}</b></li>
+            <li><span>단가 미정</span><b>${pendingCount(confirmation.lines)}건</b></li>
+            <li><span>입고일시</span><b>${escapeHtml(confirmation.receivedAt.replace("T", " "))}</b></li>
+          </ul>
+          <div class="button-row">
+            <button class="ghost-button" type="button" onclick="selectConfirmation('${confirmation.id}')">미리보기</button>
+            <button class="secondary-button" type="button" onclick="updateStatus('${confirmation.id}', '전송완료표시')">전송 완료로 표시</button>
+            <select aria-label="상태 변경" onchange="updateStatus('${confirmation.id}', this.value)">
+              ${STATUS.map((status) => `<option value="${status}" ${status === confirmation.status ? "selected" : ""}>${status}</option>`).join("")}
+            </select>
+          </div>
+        </div>
+      `;
+    }
+
+    function selectConfirmation(id) {
+      selectedConfirmationId = id;
+      showScreen("send");
+    }
+
+    function updateStatus(id, status) {
+      const row = db.confirmations.find((confirmation) => confirmation.id === id);
+      if (!row) return;
+      row.status = status;
+      row.updatedAt = nowLocal();
+      saveDb();
+      renderAll();
+      toast("상태를 변경했습니다.");
+    }
+
+    function renderSend() {
+      const rows = db.confirmations.filter((row) => ["문자대기", "문자앱열림"].includes(row.status));
+      const selected = db.confirmations.find((row) => row.id === selectedConfirmationId) || rows[0];
+      document.getElementById("screen-send").innerHTML = `
+        <div class="section-head">
+          <div>
+            <h1>문자 전송 대기</h1>
+            <p class="muted">저장된 확인서는 전화번호 전체가 없어 문자앱 링크를 다시 만들 수 없습니다. 새 작성 직후 화면에서 발송하세요.</p>
+          </div>
+        </div>
+        ${selected ? renderPreviewCard(selected, false) : "<div class='empty'>문자 전송 대기 확인서가 없습니다.</div>"}
+        ${selected ? `
+          <div class="panel">
+            <h2>저장된 문구</h2>
+            <textarea readonly>${escapeHtml(buildMessage(selected))}</textarea>
+            <div class="button-row">
+              <button class="secondary-button" type="button" onclick="copyStoredMessage('${selected.id}')">문구 복사</button>
+              <button class="primary-button" type="button" onclick="updateStatus('${selected.id}', '전송완료표시')">전송 완료로 표시</button>
+            </div>
+          </div>
+        ` : ""}
+        ${rows.length ? `<div class="line-list">${rows.map(renderConfirmationCard).join("")}</div>` : ""}
+      `;
+    }
+
+    async function copyStoredMessage(id) {
+      const row = db.confirmations.find((confirmation) => confirmation.id === id);
+      if (!row) return;
+      try {
+        await navigator.clipboard.writeText(buildMessage(row));
+      } catch (error) {
+        const helper = document.createElement("textarea");
+        helper.value = buildMessage(row);
+        document.body.appendChild(helper);
+        helper.select();
+        document.execCommand("copy");
+        helper.remove();
+      }
+      toast("저장된 확인서 문구를 복사했습니다.");
+    }
+
+    function groupSettlement() {
+      const map = new Map();
+      settlementTargets().forEach((confirmation) => {
+        if (!map.has(confirmation.farmerName)) {
+          map.set(confirmation.farmerName, { farmerName: confirmation.farmerName, count: 0, total: 0, pending: 0, nos: [] });
+        }
+        const row = map.get(confirmation.farmerName);
+        row.count += 1;
+        row.total += totalAmount(confirmation.lines);
+        row.pending += pendingCount(confirmation.lines);
+        row.nos.push(confirmation.no);
+      });
+      return [...map.values()].sort((a, b) => b.total - a.total);
+    }
+
+    function renderSettlement() {
+      const rows = groupSettlement();
+      document.getElementById("screen-settlement").innerHTML = `
+        <div class="section-head">
+          <div>
+            <h1>밤 정산 대상</h1>
+            <p class="muted">전송완료표시 또는 정산대기 상태만 농가명 기준으로 집계합니다.</p>
+          </div>
+          <button class="primary-button" type="button" onclick="downloadSettlementCsv()">정산 대상 CSV 예시</button>
+        </div>
+        ${rows.length ? `<div class="line-list">${rows.map((row) => `
+          <div class="confirm-card">
+            <h3>${escapeHtml(row.farmerName)}</h3>
+            <ul class="summary-list">
+              <li><span>확인서 수</span><b>${row.count}건</b></li>
+              <li><span>정산 반영 합계</span><b>${money(row.total)}</b></li>
+              <li><span>단가 미정</span><b>${row.pending}건</b></li>
+              <li><span>확인서 NO</span><b>${escapeHtml(row.nos.join(", "))}</b></li>
+            </ul>
+          </div>
+        `).join("")}</div>` : "<div class='empty'>밤 정산 대상이 없습니다.</div>"}
+      `;
+    }
+
+    function downloadSettlementCsv() {
+      const rows = groupSettlement();
+      if (!rows.length) {
+        toast("정산 대상이 없습니다.");
+        return;
+      }
+      const header = ["농가명", "확인서수", "정산반영합계", "단가미정건수", "확인서NO", "메모"];
+      const body = rows.map((row) => [row.farmerName, row.count, row.total, row.pending, row.nos.join(" "), "전자입고확인서 정산 예시"].map(csvEscape).join(","));
+      const blob = new Blob(["\ufeff" + [header.join(","), ...body].join("\n")], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `confirm-settlement-${localDateISO()}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast("정산 대상 CSV 예시를 생성했습니다.");
+    }
+
+    function csvEscape(value) {
+      const text = String(value ?? "");
+      return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+    }
+
+    function toast(message) {
+      const node = document.getElementById("toast");
+      node.textContent = message;
+      node.classList.add("show");
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => node.classList.remove("show"), 2200);
+    }
+
+    renderAll();
+  </script>
+</body>
+</html>
